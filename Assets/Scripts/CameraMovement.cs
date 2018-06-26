@@ -15,18 +15,34 @@ public class CameraMovement : MonoBehaviour {
 	public float lerpSpeed = 10;
 
 	public Transform cameraTarget;
-//	private GameObject camera;
+    //private Transform thisCamera;
+    private Vector3 initialOffset;
 
 	// Use this for initialization
 	void Start () {
-//		camera = GetComponent<Transform>;
+		//thisCamera = GetComponent<Transform>();
+        initialOffset = transform.position - cameraTarget.transform.position;
 	}
 	
 	// Update is called once per frame
-	void Update () {
-		
-		Vector2 tempPosition = Vector2.Lerp (transform.position, cameraTarget.position, lerpSpeed);
-		transform.position.Set (tempPosition.x, tempPosition.y, transform.position.z);
+    
+	void LateUpdate () {
+		//cameraXY.Set (transform.position.x, transform.position.y);
+		//float tempPositionX = Mathf.Lerp (transform.position.x, cameraTarget.position.x, lerpSpeed);
+		//float tempPositionY = Mathf.Lerp (transform.position.y, cameraTarget.position.y, lerpSpeed);
+        
+		if (IsWithin (cameraTarget.position, screenUpperLimit, screenLowerLimit, screenLeftLimit, screenRightLimit)) {
+            transform.position = cameraTarget.position + initialOffset;
+		}
+	}
+
+	bool IsWithin(Vector3 target, float up,float down,float left,float right){
+		if ((target.x < up) && (target.x > down)) {
+			if ((target.y < right) && (target.y > left)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	bool IsWithin(Vector2 target, float up,float down,float left,float right){

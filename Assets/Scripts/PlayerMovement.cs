@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+
+
 /// <summary>
 /// Movimentação do avatar.
 /// </summary>
@@ -25,7 +27,7 @@ public class PlayerMovement : MonoBehaviour {
 	/// Zona neutra de um joystick onde o input não é computado.
 	/// (Colocar no script PlayerControls)
 	/// </summary>
-	public float joystickTolerance = 0.1f;
+	private float joystickTolerance = 0.1f;
 
 	/// <summary>
 	/// Indica o a direção ao qual o avatar está olhando.
@@ -36,6 +38,11 @@ public class PlayerMovement : MonoBehaviour {
 	/// Componentes X e Y de movimento do personagem.
 	/// </summary>
 	public Vector2 playerMovement;
+
+	/// <summary>
+	/// Conta o tempo entre o apertar duplo do botão de esquiva.
+	/// </summary>
+	public float playerEvadeInputCounter;
 
 	/// <summary>
 	/// True para ativar a animação de caminhando.
