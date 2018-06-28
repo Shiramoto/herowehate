@@ -10,19 +10,13 @@ public class PlayerMovement : MonoBehaviour {
 	/// <summary>
 	/// Velocidade do avatar (caminhando).
 	/// </summary>
-	public float playerWalkSpd;
+	public float playerSpeed = 12f;
 	/// <summary>
-	/// Aceleração do avatar (caminhando).
+	/// Velocidade do avatar (esquivando).
 	/// </summary>
-	public float playerWalkAccel;
-	/// <summary>
-	/// Aceleração do avatar (dash).
-	/// </summary>
-	public float playerDashAccel;
-	/// <summary>
-	/// Desaceleração do avatar (caminhando/dash/dano).
-	/// </summary>
-	public float playerStopAccel;
+	public float playerDodgeSpeed = 20f;
+
+    public float dodgeDuration = 0.5f;
 	/// <summary>
 	/// Zona neutra de um joystick onde o input não é computado.
 	/// (Colocar no script PlayerControls)
@@ -32,7 +26,8 @@ public class PlayerMovement : MonoBehaviour {
 	/// <summary>
 	/// Indica o a direção ao qual o avatar está olhando.
 	/// </summary>
-	public Vector2 playerDirection;
+	public Vector2 playerDirection = Vector2.zero;
+    private Vector2 lastPlayerDirection = Vector2.zero;
 
 	/// <summary>
 	/// Componentes X e Y de movimento do personagem.
@@ -48,7 +43,11 @@ public class PlayerMovement : MonoBehaviour {
 	/// True para ativar a animação de caminhando.
 	/// </summary>
 	private bool isWalking = false;
-	private bool isStopping = false;
+    //private bool isStopped = false;
+    private bool beginDodge = false;
+    private bool isDodging = false;
+    private float dodgeBeginTime = 0f;
+    //private bool isParrying = false;
 
 	private Animator playerAnimator;
 
@@ -60,40 +59,70 @@ public class PlayerMovement : MonoBehaviour {
 
 	void Update ()
 	{
-		if (isWalking) {
-			isStopping = true;
-		}
-		isWalking = false;
+        isWalking = false;
+        float inputX = Input.GetAxisRaw("Horizontal");
+        float inputY = Input.GetAxisRaw("Vertical");
+        
+        if (isDodging)
+        {
+            if (Time.time > dodgeBeginTime + dodgeDuration)
+            {
+                isDodging = false;
+                playerDirection.Set(0, 0);
+            }
+            else
+            {
+                playerDirection = lastPlayerDirection.normalized * 2;
+                playerMovement = lastPlayerDirection.normalized * playerDodgeSpeed * Time.deltaTime;
+                transform.Translate(playerMovement.x, playerMovement.y, 0);
+            }
+        }
+        if (!isDodging)
+        {
+            if (Input.GetButtonDown("Fire2"))
+            {
+                beginDodge = true;
+            }
+            //isStopped = true;
 
-		float inputX = Input.GetAxisRaw ("Horizontal");
-		float inputY = Input.GetAxisRaw ("Vertical");
-		float playerSpeedDelta = playerWalkSpd * Time.deltaTime;
+            if (!playerDirection.Equals(Vector2.zero))
+            {
+                lastPlayerDirection = playerDirection;
+                playerDirection.Set(0, 0);
+            }
 
-		playerDirection.Set (0, 0);
+            if ((Mathf.Abs(inputX)) > joystickTolerance)
+            {
+                playerDirection.x = inputX;
+                isWalking = true;
+                //isStopped = false;
+            }
+            if (Mathf.Abs(inputY) > joystickTolerance)
+            {
+                playerDirection.y = inputY;
+                isWalking = true;
+                //isStopped = false;
 
-		if ((Mathf.Abs (inputX)) > joystickTolerance) {
-			playerDirection.x = inputX;
-			isWalking = true;
-//			isStopping = false;
-		}
-		if (Mathf.Abs (inputY) > joystickTolerance) {
-			playerDirection.y = inputY;
-			isWalking = true;
-//			isStopping = false;
+            }
+            if (beginDodge)
+            {
+                playerDirection = playerDirection * 2;
+                beginDodge = false;
+                isDodging = true;
+                isWalking = false;
+                dodgeBeginTime = Time.time;
+            }
+        }
 
-		}
 		playerAnimator.SetFloat ("SpeedX", playerDirection.x);
 		playerAnimator.SetFloat ("SpeedY", playerDirection.y);
 		playerAnimator.SetBool ("isWalking", isWalking);
 
 		if (isWalking) {
-			playerMovement = playerDirection;
-			playerMovement.Normalize ();
-			transform.Translate (playerMovement.x * playerSpeedDelta, playerMovement.y * playerSpeedDelta, 0);
-			//playerDirection.Normalize();
-			//transform.Translate (playerDirection.x * playerSpeedDelta, playerDirection.y * playerSpeedDelta, 0);
+            playerMovement = playerDirection.normalized * playerSpeed * Time.deltaTime;
+			transform.Translate (playerMovement.x, playerMovement.y, 0);
 		}else{
 			playerMovement.Set (0, 0);
 		}
-	}
+    }
 }
