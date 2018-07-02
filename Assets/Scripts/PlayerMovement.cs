@@ -39,6 +39,9 @@ public class PlayerMovement : MonoBehaviour {
 	/// </summary>
 	public float playerEvadeInputCounter;
 
+    public string evadeButton = "Fire3";
+
+
 	/// <summary>
 	/// True para ativar a animação de caminhando.
 	/// </summary>
@@ -50,10 +53,12 @@ public class PlayerMovement : MonoBehaviour {
     //private bool isParrying = false;
 
 	private Animator playerAnimator;
-
+    //private Rigidbody2D playerRigidbody;
 
 	void Start () {
 		playerAnimator = GetComponent<Animator> ();
+        playerDirection.Set(0, -1);
+        //playerRigidbody = GetComponent<Rigidbody2D>();
 	}
 	
 
@@ -74,12 +79,13 @@ public class PlayerMovement : MonoBehaviour {
             {
                 playerDirection = lastPlayerDirection.normalized * 2;
                 playerMovement = lastPlayerDirection.normalized * playerDodgeSpeed * Time.deltaTime;
+                //playerRigidbody.transform.Translate(playerMovement.x, playerMovement.y, 0);
                 transform.Translate(playerMovement.x, playerMovement.y, 0);
             }
         }
         if (!isDodging)
         {
-            if (Input.GetButtonDown("Fire2"))
+            if (Input.GetButtonDown(evadeButton))
             {
                 beginDodge = true;
             }
@@ -92,7 +98,7 @@ public class PlayerMovement : MonoBehaviour {
             }
 
             if ((Mathf.Abs(inputX)) > joystickTolerance)
-            {
+            { 
                 playerDirection.x = inputX;
                 isWalking = true;
                 //isStopped = false;
@@ -106,7 +112,14 @@ public class PlayerMovement : MonoBehaviour {
             }
             if (beginDodge)
             {
-                playerDirection = playerDirection * 2;
+                if (isWalking)
+                {
+                    playerDirection = playerDirection * 2;
+                }
+                else
+                {
+
+                }
                 beginDodge = false;
                 isDodging = true;
                 isWalking = false;
@@ -120,8 +133,10 @@ public class PlayerMovement : MonoBehaviour {
 
 		if (isWalking) {
             playerMovement = playerDirection.normalized * playerSpeed * Time.deltaTime;
-			transform.Translate (playerMovement.x, playerMovement.y, 0);
-		}else{
+            //playerRigidbody.transform.Translate(playerMovement.x, playerMovement.y, 0);
+            transform.Translate (playerMovement.x, playerMovement.y, 0);
+        }
+        else{
 			playerMovement.Set (0, 0);
 		}
     }

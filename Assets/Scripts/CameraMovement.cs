@@ -16,12 +16,12 @@ public class CameraMovement : MonoBehaviour {
 
 	public Transform cameraTarget;
     //private Transform thisCamera;
-    private Vector3 initialOffset;
+    public Vector3 camOffset;
 
 	// Use this for initialization
-	void Start () {
+	void Awake () {
 		//thisCamera = GetComponent<Transform>();
-        initialOffset = transform.position - cameraTarget.transform.position;
+        camOffset = transform.position - cameraTarget.transform.position;
 	}
 	
 	// Update is called once per frame
@@ -32,8 +32,10 @@ public class CameraMovement : MonoBehaviour {
 		//float tempPositionY = Mathf.Lerp (transform.position.y, cameraTarget.position.y, lerpSpeed);
         
 		if (IsWithin (cameraTarget.position, screenUpperLimit, screenLowerLimit, screenLeftLimit, screenRightLimit)) {
-            transform.position = cameraTarget.position + initialOffset;
-		}
+            Vector3 tempPosition = Vector3.Lerp(transform.position, cameraTarget.position + camOffset, lerpSpeed);
+            transform.position = tempPosition;
+            //transform.position = cameraTarget.position + camOffset;
+        }
 	}
 
 	bool IsWithin(Vector3 target, float up,float down,float left,float right){
