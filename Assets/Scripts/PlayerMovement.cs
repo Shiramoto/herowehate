@@ -2,142 +2,205 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-
-/// <summary>
-/// Movimentação do avatar.
-/// </summary>
-public class PlayerMovement : MonoBehaviour {
-	/// <summary>
-	/// Velocidade do avatar (caminhando).
-	/// </summary>
-	public float playerSpeed = 12f;
-	/// <summary>
-	/// Velocidade do avatar (esquivando).
-	/// </summary>
-	public float playerDodgeSpeed = 20f;
-
+public class PlayerMovement : MonoBehaviour
+{
+    public Vector3 startingPosition = Vector3.zero;
+    public float playerSpeed = 12f;
+    public const string dodgeButton = "Dodge";
+    public float dodgeSpeed = 20f;
     public float dodgeDuration = 0.5f;
-	/// <summary>
-	/// Zona neutra de um joystick onde o input não é computado.
-	/// (Colocar no script PlayerControls)
-	/// </summary>
-	private float joystickTolerance = 0.1f;
+    public const string attackButton = "Attack";
+    public float attackDuration = 0.1f;
+    public const string parryButton = "Parry";
+    public float parryDuration = 0.5f;
 
-	/// <summary>
-	/// Indica o a direção ao qual o avatar está olhando.
-	/// </summary>
-	public Vector2 playerDirection = Vector2.zero;
-    private Vector2 lastPlayerDirection = Vector2.zero;
+    /// <summary>Conta o tempo entre o apertar duplo do botão de esquiva.</summary>
+    [HideInInspector] public float dodgeInputCounter = 0f;
 
-	/// <summary>
-	/// Componentes X e Y de movimento do personagem.
-	/// </summary>
-	public Vector2 playerMovement;
+    /// <summary>Tolerância pra evitar valores muito pequenos.</summary>
+    private float joystickTolerance = 0.1f;
 
-	/// <summary>
-	/// Conta o tempo entre o apertar duplo do botão de esquiva.
-	/// </summary>
-	public float playerEvadeInputCounter;
+    [HideInInspector] public Vector2 playerInput = Vector2.down;
+    [HideInInspector] public Vector2 spriteDirection = Vector2.down;
+    [HideInInspector] public Vector2 dodgeDirection = Vector2.down;
+    [HideInInspector] public Vector2 playerMovement = Vector2.zero;
+    //[HideInInspector] public Vector2 enemyAttack;
 
-    public string evadeButton = "Fire3";
+    [HideInInspector] public bool isWalking = false;
+    [HideInInspector] public bool isInAction = false;
+    [HideInInspector] public bool isDodging = false;
+    [HideInInspector] public bool isAttacking = false;
+    [HideInInspector] public bool isParrying = false;
+    [HideInInspector] public bool isLocked = false;
+    [HideInInspector] public bool isHurt = false;
+
+    private float actionEndTime = 0f;
+
+    private Animator playerAnimator;
+
+    void Start()
+    {
+        playerAnimator = GetComponent<Animator>();
+
+        transform.position.Set(startingPosition.x, startingPosition.y, 0); //resetar posição
+        transform.Translate(startingPosition.x - transform.position.x, startingPosition.y - transform.position.y, startingPosition.z - transform.position.z);
+
+    }
 
 
-	/// <summary>
-	/// True para ativar a animação de caminhando.
-	/// </summary>
-	private bool isWalking = false;
-    //private bool isStopped = false;
-    private bool beginDodge = false;
-    private bool isDodging = false;
-    private float dodgeBeginTime = 0f;
-    //private bool isParrying = false;
-
-	private Animator playerAnimator;
-    //private Rigidbody2D playerRigidbody;
-
-	void Start () {
-		playerAnimator = GetComponent<Animator> ();
-        playerDirection.Set(0, -1);
-        //playerRigidbody = GetComponent<Rigidbody2D>();
-	}
-	
-
-	void Update ()
-	{
-        isWalking = false;
-        float inputX = Input.GetAxisRaw("Horizontal");
-        float inputY = Input.GetAxisRaw("Vertical");
-        
-        if (isDodging)
+    void Update()
+    {
+        if (isInAction)
         {
-            if (Time.time > dodgeBeginTime + dodgeDuration)
+            UpdatePlayerAction();
+        }
+        if (!isInAction)
+        {
+            GetPlayerInput();
+            if (!playerInput.Equals(Vector2.zero))
             {
-                isDodging = false;
-                playerDirection.Set(0, 0);
+                UpdateSpriteDirection();
+                isWalking = true;
+                playerMovement = playerInput.normalized * playerSpeed * Time.deltaTime;
             }
             else
             {
-                playerDirection = lastPlayerDirection.normalized * 2;
-                playerMovement = lastPlayerDirection.normalized * playerDodgeSpeed * Time.deltaTime;
-                //playerRigidbody.transform.Translate(playerMovement.x, playerMovement.y, 0);
-                transform.Translate(playerMovement.x, playerMovement.y, 0);
+                isWalking = false;
+                spriteDirection.Normalize();
+                playerMovement = Vector2.zero;
+            }
+            switch (ButtonPressed())
+            {
+                case parryButton:
+                    isWalking = false;
+                    isParrying = true;
+                    isInAction = true;
+                    actionEndTime = Time.time + parryDuration;
+                    playerMovement = Vector2.zero;
+                    break;
+                case dodgeButton:
+                    isWalking = false;
+                    isDodging = true;
+                    isInAction = true;
+                    if (playerInput.Equals(Vector2.zero))
+                    {
+                        dodgeDirection = spriteDirection.normalized;
+                    }
+                    else
+                    {
+                        dodgeDirection = playerInput.normalized;
+                    }
+                    spriteDirection = 3f * spriteDirection.normalized;
+                    actionEndTime = Time.time + dodgeDuration;
+                    playerMovement = dodgeDirection * dodgeSpeed * Time.deltaTime;
+                    break;
+                case attackButton:
+                    isWalking = false;
+                    isAttacking = true;
+                    isInAction = true;
+                    actionEndTime = Time.time + attackDuration;
+                    playerMovement = Vector2.zero;
+                    break;
+                    //default:
             }
         }
-        if (!isDodging)
+
+        //Executa o movimento
+        transform.Translate(playerMovement.x, playerMovement.y, 0);
+
+        //define variaveis do Animator
+        playerAnimator.SetFloat("SpeedX", spriteDirection.x);
+        playerAnimator.SetFloat("SpeedY", spriteDirection.y);
+        playerAnimator.SetBool("isWalking", isWalking);
+        //playerAnimator.SetBool("isAttacking", isAttacking);
+        //playerAnimator.SetBool("isParrying", isParrying);
+        //playerAnimator.SetBool("isHurt", isHurt);
+
+    }
+
+    void UpdatePlayerAction()
+    {
+        if (actionEndTime < Time.time)
         {
-            if (Input.GetButtonDown(evadeButton))
+            isInAction = false;
+            if (isDodging)
             {
-                beginDodge = true;
+                spriteDirection.Normalize();
+                dodgeDirection = spriteDirection;
+                isDodging = false;
             }
-            //isStopped = true;
+            isAttacking = false;
+            isParrying = false;
+            isHurt = false;
+        }
+    }
 
-            if (!playerDirection.Equals(Vector2.zero))
-            {
-                lastPlayerDirection = playerDirection;
-                playerDirection.Set(0, 0);
-            }
+    string ButtonPressed()
+    {
+        if (isLocked)
+        {
+            return "locked";
+        }
+        if (isHurt)
+        {
+            return "hurt";
+        }
+        if (Input.GetButtonDown(parryButton))
+        {
+            return parryButton;
+        }
+        if (Input.GetButtonDown(dodgeButton))
+        {
+            return dodgeButton;
+        }
+        if (Input.GetButtonDown(attackButton))
+        {
+            return attackButton;
+        }
+        return "";
+    }
 
-            if ((Mathf.Abs(inputX)) > joystickTolerance)
-            { 
-                playerDirection.x = inputX;
-                isWalking = true;
-                //isStopped = false;
-            }
-            if (Mathf.Abs(inputY) > joystickTolerance)
+    void GetPlayerInput()
+    {
+        //primeiro se obtem a direção do input
+        playerInput.Set(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+        if ((Mathf.Abs(playerInput.x)) < joystickTolerance)
+        {
+            playerInput.x = 0f;
+        }
+        if (Mathf.Abs(playerInput.y) < joystickTolerance)
+        {
+            playerInput.y = 0f;
+        }
+    }
+    void UpdateSpriteDirection()
+    {
+        if (!playerInput.Equals(Vector2.zero))
+        {
+            //muda a direção do sprite se necessário
+            if (Mathf.Abs(Vector2.Angle(playerInput, spriteDirection)) > 45f)
             {
-                playerDirection.y = inputY;
-                isWalking = true;
-                //isStopped = false;
-
-            }
-            if (beginDodge)
-            {
-                if (isWalking)
+                //se o angulo da direção nova for grande, o sprite mudará de direção
+                if (Mathf.Abs(playerInput.x) - Mathf.Abs(playerInput.y) > (2 * joystickTolerance))
                 {
-                    playerDirection = playerDirection * 2;
+                    spriteDirection.x = 2f * Mathf.Sign(playerInput.x);
+                    spriteDirection.y = 0f;
                 }
                 else
-                {
-
+                {// if (Mathf.Abs(playerInput.y) - Mathf.Abs(playerInput.x) > (2 * joystickTolerance)){
+                    spriteDirection.x = 0f;
+                    spriteDirection.y = 2f * Mathf.Sign(playerInput.y);
                 }
-                beginDodge = false;
-                isDodging = true;
-                isWalking = false;
-                dodgeBeginTime = Time.time;
             }
+            //já que há um input, seta a flag
+            isWalking = true;
+            playerMovement = playerInput.normalized * playerSpeed * Time.deltaTime;
         }
-
-		playerAnimator.SetFloat ("SpeedX", playerDirection.x);
-		playerAnimator.SetFloat ("SpeedY", playerDirection.y);
-		playerAnimator.SetBool ("isWalking", isWalking);
-
-		if (isWalking) {
-            playerMovement = playerDirection.normalized * playerSpeed * Time.deltaTime;
-            //playerRigidbody.transform.Translate(playerMovement.x, playerMovement.y, 0);
-            transform.Translate (playerMovement.x, playerMovement.y, 0);
+        else
+        {
+            //input é nulo, logo o player estará parado
+            isWalking = false;
+            playerMovement = Vector2.zero;
         }
-        else{
-			playerMovement.Set (0, 0);
-		}
     }
 }

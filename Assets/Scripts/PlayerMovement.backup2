@@ -1,0 +1,412 @@
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class PlayerMovement : MonoBehaviour
+{
+    public Vector3 startingPosition = Vector3.zero;
+    public float playerSpeed = 12f;
+    public float dodgeSpeed = 20f;
+
+    private float joystickTolerance = 0.1f;
+
+    [HideInInspector] public Vector2 playerInput = Vector2.down;
+    [HideInInspector] public Vector2 spriteDirection = Vector2.down;
+    [HideInInspector] public Vector2 dodgeDirection = Vector2.down;
+    [HideInInspector] private Vector2 lastplayerInput = Vector2.down;
+    [HideInInspector] public Vector2 playerMovement;
+
+    //[HideInInspector] public Vector2 enemyAttack;
+
+    /// <summary>Conta o tempo entre o apertar duplo do botão de esquiva.</summary>
+    [HideInInspector] public float dodgeInputCounter = 0f;
+
+    public string dodgeButton = "Dodge";
+    public float dodgeDuration = 0.5f;
+
+    public string attackButton = "Attack";
+    public float attackDuration = 0.1f;
+
+    public string parryButton = "Parry";
+    public float parryDuration = 0.5f;
+
+    /// <summary>True para ativar a animação de caminhando.</summary>
+    private bool isWalking = false;
+    private bool isInAction = false;
+    private bool beginDodge = false;
+    [HideInInspector] public bool isDodging = false;
+    private float dodgeBeginTime = 0f;
+    [HideInInspector] public bool isAttacking = false;
+    [HideInInspector] public bool isParrying = false;
+    [HideInInspector] public bool isLocked = false;
+    [HideInInspector] public bool isHurt = false;
+
+
+    private float actionEndTime = 0f;
+    //private float actionTime = 0f;
+
+    private Animator playerAnimator;
+    //private Rigidbody2D playerRigidbody;
+
+    void Start()
+    {
+        playerAnimator = GetComponent<Animator>();
+        
+        transform.position.Set(startingPosition.x, startingPosition.y, 0); //resetar posição
+        transform.Translate(startingPosition.x- transform.position.x,startingPosition.y-transform.position.y,startingPosition.z-transform.position.z);
+
+    }
+
+
+    void Update()
+    {
+        isWalking = false;
+        float inputX = Input.GetAxisRaw("Horizontal");
+        float inputY = Input.GetAxisRaw("Vertical");
+        if (isDodging)
+        {
+            if (Time.time > dodgeBeginTime + dodgeDuration)
+            {
+                isDodging = false;
+                playerInput.Set(0, 0);
+            }
+            else
+            {
+                playerInput = lastplayerInput.normalized * 2;
+                playerMovement = lastplayerInput.normalized * dodgeSpeed * Time.deltaTime;
+                //playerRigidbody.transform.Translate(playerMovement.x, playerMovement.y, 0);
+                transform.Translate(playerMovement.x, playerMovement.y, 0);
+            }
+        }
+        if (!isDodging)
+        {
+            if (Input.GetButtonDown(dodgeButton))
+            {
+                beginDodge = true;
+            }
+            //isInAction = true;
+
+            if (!playerInput.Equals(Vector2.zero))
+            {
+                lastplayerInput = playerInput;
+                playerInput.Set(0, 0);
+            }
+
+            if ((Mathf.Abs(inputX)) > joystickTolerance)
+            {
+                playerInput.x = inputX;
+                isWalking = true;
+                //isInAction = false;
+            }
+            if (Mathf.Abs(inputY) > joystickTolerance)
+            {
+                playerInput.y = inputY;
+                isWalking = true;
+                //isInAction = false;
+
+            }
+
+            if (beginDodge)
+            {
+                if (isWalking)
+                {
+                    playerInput = playerInput * 2;
+                }
+                else
+                {
+
+                }
+                beginDodge = false;
+                isDodging = true;
+                isWalking = false;
+                dodgeBeginTime = Time.time;
+            }
+        }
+
+        playerAnimator.SetFloat("SpeedX", playerInput.x);
+        playerAnimator.SetFloat("SpeedY", playerInput.y);
+        playerAnimator.SetBool("isWalking", isWalking);
+
+        if (isWalking)
+        {
+            playerMovement = playerInput.normalized * playerSpeed * Time.deltaTime;
+            //playerRigidbody.transform.Translate(playerMovement.x, playerMovement.y, 0);
+            transform.Translate(playerMovement.x, playerMovement.y, 0);
+        }
+        else
+        {
+            playerMovement.Set(0, 0);
+        }
+    }
+
+    void UpdatePlayerAction()
+    {
+        if (isInAction)
+        {
+            if (actionEndTime < Time.time)
+            {
+                isInAction = false;
+                isDodging = false;
+                isAttacking = false;
+                isParrying = false;
+            }
+        }
+    }
+
+    string ButtonPressed()
+    {
+        if (isLocked)
+        {
+            return "locked";
+        }
+        if (isHurt)
+        {
+            return "hurt";
+        }
+        if (Input.GetButtonDown(parryButton))
+        {
+            return parryButton;
+        }
+        if (Input.GetButtonDown(dodgeButton))
+        {
+            return dodgeButton;
+        }
+        if (Input.GetButtonDown(attackButton))
+        {
+            return attackButton;
+        }
+        return "";
+        switch (true)
+        {
+            case true:
+                //Console.WriteLine("Case 1");
+                break;
+            case false:
+                //Console.WriteLine("Case 2");
+                break;
+            default:
+                //Console.WriteLine("Default case");
+                break;
+        }
+    }
+
+    void Movimento()
+    {
+        //Se ainda está executando um movimento, continua
+        if (isInAction)
+        {
+            if (actionEndTime < Time.time)
+            {
+                isInAction = false;
+                isDodging = false;
+                isAttacking = false;
+                isParrying = false;
+            }
+        }
+        //Se já acabou o tempo de execução então executa novo
+        if (!isInAction)
+        {
+
+            //primeiro se obtem a direção do input
+            playerInput.Set(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+            if ((Mathf.Abs(playerInput.x)) < joystickTolerance)
+            {
+                playerInput.x = 0f;
+            }
+            if (Mathf.Abs(playerInput.y) < joystickTolerance)
+            {
+                playerInput.y = 0f;
+            }
+
+            if (!playerInput.Equals(Vector2.zero))
+            {
+                //muda a direção do sprite se necessário
+                if (Mathf.Abs(Vector2.Angle(playerInput, spriteDirection)) > 45f)
+                {
+                    //se o angulo da direção nova for grande, o sprite mudará de direção
+                    if (Mathf.Abs(playerInput.x) - Mathf.Abs(playerInput.y) > (2 * joystickTolerance))
+                    {
+                        spriteDirection.x = 2f * Mathf.Sign(playerInput.x);
+                        spriteDirection.y = 0f;
+                    }
+                    else
+                    {// if (Mathf.Abs(playerInput.y) - Mathf.Abs(playerInput.x) > (2 * joystickTolerance)){
+                        spriteDirection.x = 0f;
+                        spriteDirection.y = 2f * Mathf.Sign(playerInput.y);
+                    }
+                }
+                //já que há um input, seta a flag
+                isWalking = true;
+                playerMovement = playerInput.normalized * playerSpeed * Time.deltaTime;
+            }
+            else
+            {
+                //input é nulo, logo o player estará parado
+                isWalking = false;
+                playerMovement = Vector2.zero;
+            }
+
+            if (Input.GetButtonDown(parryButton))
+            {
+                isWalking = false;
+                isParrying = true;
+                isInAction = true;
+                actionEndTime = Time.time + parryDuration;
+                playerMovement = Vector2.zero;
+            }
+            else if (Input.GetButtonDown(dodgeButton))
+            {
+                isWalking = false;
+                isDodging = true;
+                isInAction = true;
+
+                if (playerInput.Equals(Vector2.zero))
+                {
+                    dodgeDirection = spriteDirection.normalized;
+                }
+                else
+                {
+                    dodgeDirection = playerInput.normalized;
+                }
+                spriteDirection = 3f * spriteDirection.normalized;
+
+                actionEndTime = Time.time + dodgeDuration;
+
+            }
+            else if (Input.GetButtonDown(attackButton))
+            {
+                isWalking = false;
+                isAttacking = true;
+                isInAction = true;
+                actionEndTime = Time.time + attackDuration;
+                playerMovement = Vector2.zero;
+            }
+        }
+
+        if (isDodging)
+        {
+            playerMovement = dodgeDirection * dodgeSpeed * Time.deltaTime;
+        }
+
+        if (isParrying)
+        {
+
+        }
+
+        if (isAttacking)
+        {
+
+        }
+
+        if (isLocked)
+        {
+            playerMovement = Vector2.zero;
+        }
+
+        if (isHurt)
+        {
+            //playerMovement = enemyAttack*knockBackSpeed*Time.deltaTime;
+        }
+
+        //Executa o movimento
+        transform.Translate(playerMovement.x, playerMovement.y, 0);
+
+        //define variaveis do Animator
+        playerAnimator.SetFloat("SpeedX", spriteDirection.x);
+        playerAnimator.SetFloat("SpeedY", spriteDirection.y);
+        playerAnimator.SetBool("isWalking", isWalking);
+
+
+        //verifica qual ação está ocorrendo
+        //se tempo até o fim da ação terminou
+        //inicia ação do input
+        //aplica flags de novo movimento
+        //else
+        //ignora input
+        //continua movimento anterior
+
+        //inicia ação do input
+        //aplica flags do novo movimento
+
+    } //Fim do MOVEMENT
+
+    Vector2 FlattenVector2(Vector2 v)
+    {
+        float angleRight = Vector2.SignedAngle(v, Vector2.right);
+        float angleUp = Vector2.SignedAngle(v, Vector2.up);
+
+        Vector2 r = Vector2.zero;
+        if (Mathf.Abs(angleRight) < 45)
+        {
+            r.x = 1;
+        }
+        else if (Mathf.Abs(angleRight) > 135)
+        {
+            r.x = -1;
+        }
+        else if (Mathf.Abs(angleUp) < 45)
+        {
+            r.y = 1;
+        }
+        else if (Mathf.Abs(angleUp) > 135)
+        {
+            r.y = -1;
+        }
+        //print(angleRight.ToString()+" "+angleUp.ToString()+" "+r.x.ToString()+" "+r.y.ToString());
+        return r;
+        //
+    }
+
+    Vector2 CeilVector2(Vector2 v, float ceil = 1f, float tolerance = 0.1f)
+    {
+        Vector2 r = Vector2.zero;
+        if (Mathf.Abs(v.x) > tolerance)
+        {
+            r.x = ceil * Mathf.Sign(v.x);
+        }
+        if (Mathf.Abs(v.y) > tolerance)
+        {
+            r.y = ceil * Mathf.Sign(v.y);
+        }
+        return r;
+    }
+
+    Vector2 Dir8Vector2(Vector2 v, float ceil = 1f, float tolerance = 0.1f)
+    {
+        if (v.Equals(Vector2.zero))
+        {
+            return v;
+        }
+        Vector2 r = Vector2.zero;
+        if (Mathf.Abs(v.x) - Mathf.Abs(v.y) > (2 * tolerance))
+        {
+            r.x = ceil * Mathf.Sign(v.x);
+            return r;
+        }
+        if (Mathf.Abs(v.y) - Mathf.Abs(v.x) > (2 * tolerance))
+        {
+            r.x = ceil * Mathf.Sign(v.y);
+            return r;
+        }
+        //r = CeilVector2(v,ceil,tolerance);
+
+        if (Mathf.Abs(v.x) > tolerance)
+        {
+            r.x = ceil * Mathf.Sign(v.x);
+        }
+        if (Mathf.Abs(v.y) > tolerance)
+        {
+            r.y = ceil * Mathf.Sign(v.y);
+        }
+        return r;
+    }
+    bool checkDiag(Vector2 v, float tolerance = 0.1f)
+    {
+        if ((Mathf.Abs(v.x) - Mathf.Abs(v.y)) < tolerance)
+        {
+            return true;
+        }
+        return false;
+    }
+
+}
